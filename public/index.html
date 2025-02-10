@@ -1,0 +1,260 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>타자 연습</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #9edf9c;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        background: #fff;
+        width: 90%;
+        max-width: 800px;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+      }
+      .target-text {
+        font-size: 20px;
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        min-height: 80px;
+        letter-spacing: 1px;
+      }
+      .typing-input {
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        outline: none;
+        transition: border-color 0.3s;
+      }
+      .typing-input:focus {
+        border-color: #5563de;
+      }
+      .stats {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 25px;
+        flex-wrap: wrap;
+      }
+      .stat {
+        background: #f7f7f7;
+        padding: 15px;
+        margin: 10px;
+        border-radius: 8px;
+        flex: 1 1 200px;
+        text-align: center;
+      }
+      .stat h2 {
+        margin-bottom: 10px;
+        font-size: 16px;
+        color: #555;
+      }
+      .stat p {
+        font-size: 24px;
+        color: #333;
+      }
+      .finish-btn {
+        margin-top: 25px;
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+        background: #5563de;
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      .finish-btn:hover {
+        background: #3e4bb8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>타자 연습</h1>
+      <div class="target-text" id="targetText"></div>
+      <input
+        type="text"
+        id="typingInput"
+        class="typing-input"
+        placeholder="입력을 시작하세요..."
+        autocomplete="off"
+      />
+      <div class="stats">
+        <div class="stat">
+          <h2>진행시간</h2>
+          <p id="elapsedTime">00:00</p>
+        </div>
+        <div class="stat">
+          <h2>현재 타수</h2>
+          <p id="currentSpeed">0</p>
+        </div>
+        <div class="stat">
+          <h2>현재 정확도</h2>
+          <p id="currentAccuracy">0.00%</p>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <h2>최고 타수</h2>
+          <p id="bestSpeed">0</p>
+        </div>
+        <div class="stat">
+          <h2>평균 타수</h2>
+          <p id="avgSpeed">0.00</p>
+        </div>
+        <div class="stat">
+          <h2>전체 평균 정확도</h2>
+          <p id="avgAccuracy">0.00%</p>
+        </div>
+      </div>
+      <button id="finishBtn" class="finish-btn">완료</button>
+    </div>
+    <script>
+      const sentences = [
+        'When you have faults, do not fear to abandon them.',
+        'They must often change who would be constant in happiness or wisdom.',
+        'Age is no guarantee of maturity.',
+        'Youth isn’t always all it’s touted to be.',
+        'You will face many defeats in life, but never let yourself be defeated.',
+      ];
+      const targetText =
+        sentences[Math.floor(Math.random() * sentences.length)];
+      const targetTextElem = document.getElementById('targetText');
+      const typingInput = document.getElementById('typingInput');
+      const elapsedTimeDisplay = document.getElementById('elapsedTime');
+      const currentSpeedDisplay = document.getElementById('currentSpeed');
+      const currentAccuracyDisplay = document.getElementById('currentAccuracy');
+      const bestSpeedDisplay = document.getElementById('bestSpeed');
+      const avgSpeedDisplay = document.getElementById('avgSpeed');
+      const avgAccuracyDisplay = document.getElementById('avgAccuracy');
+      const finishBtn = document.getElementById('finishBtn');
+      let startTime = null;
+      let timerInterval = null;
+      function updateDisplay(target, typed) {
+        let html = '';
+        for (let i = 0; i < target.length; i++) {
+          if (i < typed.length) {
+            html +=
+              target[i] === typed[i]
+                ? `<span style="color:#2ecc71;">${target[i]}</span>`
+                : `<span style="color:#e74c3c;">${target[i]}</span>`;
+          } else {
+            html += `<span style="color:#000;">${target[i]}</span>`;
+          }
+        }
+        return html;
+      }
+      function updateTargetDisplay() {
+        targetTextElem.innerHTML = updateDisplay(targetText, typingInput.value);
+      }
+      targetTextElem.innerHTML = updateDisplay(targetText, '');
+      function startTyping() {
+        startTime = Date.now();
+        timerInterval = setInterval(updateStats, 100);
+      }
+      function finishTyping() {
+        clearInterval(timerInterval);
+        const endTime = Date.now();
+        const typedText = typingInput.value;
+        fetch('/typing/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetText, typedText, startTime, endTime }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // 백엔드에서 한글 키로 반환하는 데이터를 사용합니다.
+            elapsedTimeDisplay.innerText = data.current['진행시간'];
+            currentSpeedDisplay.innerText = data.current['현재타수'];
+            currentAccuracyDisplay.innerText =
+              data.current['현재정확도'] + '%';
+            bestSpeedDisplay.innerText = data.record['최고타수'];
+            avgSpeedDisplay.innerText = data.record['평균타수'];
+            avgAccuracyDisplay.innerText =
+              data.record['전체평균정확도'] + '%';
+            alert(`타자 연습 종료!
+진행시간: ${data.current['진행시간']}
+현재 타수: ${data.current['현재타수']}
+현재 정확도: ${data.current['현재정확도']}%`);
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            alert('오류가 발생하였습니다!');
+          });
+      }
+      function updateStats() {
+        const now = Date.now();
+        const elapsedMs = now - startTime;
+        elapsedTimeDisplay.innerText = formatTime(elapsedMs);
+        const typedText = typingInput.value;
+        const totalTyped = typedText.replace(/\s/g, '').length;
+        const correctChars = computeCorrectChars(targetText, typedText);
+        const elapsedSeconds = elapsedMs / 1000;
+        const grossCPM =
+          elapsedSeconds > 0 ? (totalTyped / elapsedSeconds) * 60 : 0;
+        const netCPM =
+          elapsedSeconds > 0 && totalTyped > 0
+            ? grossCPM * (correctChars / totalTyped)
+            : 0;
+        currentSpeedDisplay.innerText = Math.floor(netCPM);
+        const totalTargetChars = targetText.replace(/\s/g, '').length;
+        const currentAcc =
+          totalTargetChars > 0 ? (correctChars / totalTargetChars) * 100 : 100;
+        currentAccuracyDisplay.innerText =
+          Math.min(currentAcc, 100).toFixed(2) + '%';
+        updateTargetDisplay();
+      }
+      function formatTime(ms) {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+        const seconds = String(totalSeconds % 60).padStart(2, '0');
+        return `${minutes}:${seconds}`;
+      }
+      function computeCorrectChars(target, typed) {
+        let count = 0;
+        const len = Math.min(target.length, typed.length);
+        for (let i = 0; i < len; i++) {
+          if (target[i] === typed[i]) count++;
+        }
+        return count;
+      }
+      typingInput.addEventListener('input', () => {
+        if (!startTime) startTyping();
+      });
+      typingInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finishTyping();
+          typingInput.disabled = true;
+        }
+      });
+      finishBtn.addEventListener('click', () => {
+        finishTyping();
+        typingInput.disabled = true;
+      });
+    </script>
+  </body>
+</html>
